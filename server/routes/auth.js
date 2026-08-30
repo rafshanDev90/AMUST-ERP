@@ -1,37 +1,24 @@
-// backend/routes/auth.js
-
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-
 const User = require('../models/User');
 const Student = require('../models/Student');
 
 const router = express.Router();
 
-// -------------------------------
-// POST /auth/login
-// -------------------------------
 router.post('/login', async (req, res) => {
   try {
     const { loginId, rollNumber, email, parentPhone, password } = req.body;
 
     let user = null;
 
-    // Parent login (phone + password)
     if (parentPhone) {
       user = await User.findOne({ parentPhone, role: "parent" });
-    }
-    // Student login (loginId)
-    else if (loginId) {
+    } else if (loginId) {
       user = await User.findOne({ loginId, role: "student" });
-    }
-    // Student old login (rollNumber)
-    else if (rollNumber) {
+    } else if (rollNumber) {
       user = await User.findOne({ rollNumber, role: "student" });
-    }
-    // Admin / Teacher (email)
-    else if (email) {
+    } else if (email) {
       user = await User.findOne({ email });
     }
 
@@ -46,7 +33,6 @@ router.post('/login', async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Student mapping (teacher ke liye zaroori nahi)
     let studentId = null;
     try {
       if (user.role === "student") {
@@ -76,7 +62,7 @@ router.post('/login', async (req, res) => {
 
   } catch (err) {
     console.error("Error in /auth/login:", err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 

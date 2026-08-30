@@ -1,27 +1,36 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 
-// Local DB — jahan student/attendance data store ho raha hai
 const MONGO_URL = process.env.MONGO_URL;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@school.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 async function seed() {
+  if (!MONGO_URL) {
+    console.error("FATAL: MONGO_URL is not set.");
+    process.exit(1);
+  }
+  if (!ADMIN_PASSWORD) {
+    console.error("FATAL: ADMIN_PASSWORD is not set in .env");
+    process.exit(1);
+  }
+
   try {
     await mongoose.connect(MONGO_URL);
     console.log("DB connected");
 
-    // Check if admin exists
-    const exists = await User.findOne({ email: 'admin@school.com' });
+    const exists = await User.findOne({ email: ADMIN_EMAIL });
     if (exists) {
       console.log("Admin already exists");
       process.exit(0);
     }
 
-    // Create admin user with encrypted password
-    const hash = await bcrypt.hash('admin123', 10);
+    const hash = await bcrypt.hash(ADMIN_PASSWORD, 12);
     await User.create({
       name: 'Admin',
-      email: 'admin@school.com',
+      email: ADMIN_EMAIL,
       password: hash,
       role: 'admin'
     });
@@ -30,7 +39,7 @@ async function seed() {
     process.exit(0);
 
   } catch (err) {
-    console.log("Error:", err);
+    console.error("Error:", err);
     process.exit(1);
   }
 }

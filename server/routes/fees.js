@@ -35,15 +35,14 @@ router.put('/:id/pay', auth(['admin', 'accountant']), async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// pehle aisa tha:
-// router.get('/:id/invoice', auth(['admin','accountant','teacher']), async (...) => {
 
-router.get('/:id/invoice', async (req, res) => {
+router.get('/:id/invoice', auth(['admin', 'accountant', 'teacher']), async (req, res) => {
   try {
     const fee = await Fee.findById(req.params.id).populate('student');
     if (!fee) return res.status(404).json({ message: "Fee record not found" });
 
     const PDFDocument = require('pdfkit');
+
     const doc = new PDFDocument({ margin: 40 });
 
     res.setHeader('Content-Type', 'application/pdf');

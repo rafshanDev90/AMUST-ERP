@@ -2,7 +2,7 @@ const authService = require("../services/authService");
 const userRepo = require("../repos/userRepo");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "schoolerp_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ================================
 // AUTH CONTROLLER - HTTP Request Handling

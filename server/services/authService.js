@@ -3,7 +3,7 @@ const User = require("../models/User");
 const userRepo = require("../repos/userRepo");
 
 // JWT Secret from environment
-const JWT_SECRET = process.env.JWT_SECRET || "schoolerp_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Token expiry times
 const ACCESS_TOKEN_EXPIRES = "15m";  // Access token valid for 15 minutes
