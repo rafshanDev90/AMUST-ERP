@@ -38,7 +38,7 @@ app.use("/api/teachers", require("./routes/teachers"));
 
 
 // Local MongoDB ka URL (data isi database me save hoga)
-const MONGO_URL = "mongodb://127.0.0.1:27017/schoolerp";
+const MONGO_URL = process.env.MONGO_URL;
 
 // MongoDB connect karne wala function
 async function main() {
