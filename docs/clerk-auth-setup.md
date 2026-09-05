@@ -1,6 +1,6 @@
 # Clerk Authentication Setup Guide (SERP Server)
 
-This documents how to wire **Clerk** into the `server` directory of the SERP project. No code files are created here — this is the plan you follow when you're ready to implement.
+This documents how to wire **Clerk** into the `server` directory of the SERP project using modern **ES module** syntax. No code files are created here — this is the plan you follow when you're ready to implement.
 
 ---
 
@@ -49,7 +49,7 @@ Client (React)                       Server (Express)
 - A Clerk account (sign up at https://clerk.com).
 - A Clerk **application** created in the Clerk dashboard.
 - A MongoDB cluster (already using `mongoose`).
-- Node.js on the server (CommonJS project — confirmed in `package.json` with `"type": "commonjs"`).
+- Node.js on the server with **ES module** support — set `"type": "module"` in `package.json` so `import`/`export` syntax works natively.
 
 ---
 
@@ -57,7 +57,7 @@ Client (React)                       Server (Express)
 
 ### 4.1 From the Clerk Dashboard
 
-After you create a Clerk app, go to **API Keys** → **Production** (or **Development**) to get these values:
+After you create a Clerk app, go to **API Keys** → **Development** (or **Production**) to get these values:
 
 | Variable | Prefix | Where used | Description |
 |---|---|---|---|
@@ -112,13 +112,27 @@ npm install @clerk/express
 
 > `@clerk/express` is the official middleware package built on top of `@clerk/backend`. It provides `clerkMiddleware` and `requireAuth` for Express. This is the **current** recommended package (v5+).
 
-### Step 2 — Initialise the middleware in `server.js` (or `index.js`)
+### Step 2 — Set ES module mode in package.json
+
+Update `server/package.json` from CommonJS to ES modules:
+
+```diff
+  "type": "commonjs"
+```
+becomes
+```diff
+  "type": "module"
+```
+
+> With `"type": "module"`, all `.js` files use `import`/`export` natively. You must add `.js` extensions to relative imports (e.g., `import User from '../models/User.js'`).
+
+### Step 3 — Initialise the middleware in `server.js` (or `index.js`)
 
 You will add two things to your Express app:
 
 ```js
-// At the top, after requiring express and mongoose
-const { clerkMiddleware } = require('@clerk/express');
+// At the top, after importing express and mongoose
+import { clerkMiddleware } from '@clerk/express';
 
 // Inside your app setup, BEFORE any routes:
 app.use(clerkMiddleware());
@@ -131,19 +145,20 @@ app.use(clerkMiddleware());
 
 If there is no token at all (public route), `req.auth` stays `undefined` — this is fine for unauthenticated routes.
 
-### Step 3 — Create an auth middleware for role checks
+### Step 4 — Create an auth middleware for role checks
 
 You will create a new file: `server/middleware/clerkAuth.js`.
 
 **Logic**:
 
 ```js
-const { requireAuth } = require('@clerk/express');
+import { requireAuth } from '@clerk/express';
 
 // Protect a route — requires a valid session
 const requireUser = requireAuth();
 
-module.exports = { requireUser };
+// Export for use in routes
+export default requireUser;
 ```
 
 **Role-based access**: Clerk supports roles via `publicMetadata.role` set in the Clerk dashboard, OR you can store roles in your own MongoDB user collection. The recommended approach for an ERP system:
@@ -155,11 +170,11 @@ Example logic for a role-checking middleware you will write:
 
 ```js
 // server/middleware/clerkAuth.js (planned)
-const { requireAuth } = require('@clerk/express');
-const User = require('../models/User'); // your Mongoose model
+import { requireAuth } from '@clerk/express';
+import User from '../models/User.js';
 
 // 1. Verify session, then 2. attach full user from DB
-const protect = async (req, res, next) => {
+export const protect = (req, res, next) => {
   requireAuth()(req, res, async () => {
     // req.auth.userId is Clerk's user ID
     const user = await User.findOne({ clerkId: req.auth.userId });
@@ -170,22 +185,20 @@ const protect = async (req, res, next) => {
 };
 
 // Role-based wrapper
-const authorize = (...roles) => (req, res, next) => {
+export const authorize = (...roles) => (req, res, next) => {
   if (!req.user || !roles.includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied' });
   }
   next();
 };
-
-module.exports = { protect, authorize };
 ```
 
-### Step 4 — Create a User model (Mongoose)
+### Step 5 — Create a User model (Mongoose)
 
 You will create `server/models/User.js`:
 
 ```js
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
   clerkId:  { type: String, required: true, unique: true }, // Clerk's user_xxx
@@ -196,16 +209,19 @@ const userSchema = new mongoose.Schema({
   faculty:  { type: String },   // for teachers
 }, { timestamps: true });
 
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema);
 ```
 
-### Step 5 — Set up a webhook to auto-create users
+### Step 6 — Set up a webhook to auto-create users
 
 This is **critical** — every new Clerk user should be mirrored in your MongoDB.
 
 **In `server.js` (or a dedicated `routes/webhook.js`):**
 
 ```js
+import express from 'express';
+
+// Raw body parser needed to verify webhook signature
 app.post('/api/webhooks/clerk', express.raw({ type: 'application/json' }), (req, res) => {
   // verify the webhook signature using CLERK_WEBHOOK_SECRET
   // parse the event type
@@ -222,12 +238,12 @@ app.post('/api/webhooks/clerk', express.raw({ type: 'application/json' }), (req,
 3. Subscribe to events: `user.created`, `user.updated`, `user.deleted`.
 4. Copy the **Signing Secret** → paste into `CLERK_WEBHOOK_SECRET` in `.env`.
 
-### Step 6 — Protect your routes
+### Step 7 — Protect your routes
 
 When you build routes for courses, assignments, documents, etc., wrap them:
 
 ```js
-const { protect } = require('../middleware/clerkAuth');
+import { protect, authorize } from '../middleware/clerkAuth.js';
 
 router.get('/courses', protect, coursesController.getAll);
 router.post('/courses', protect, authorize('teacher', 'admin'), coursesController.create);
@@ -280,7 +296,7 @@ When you're ready to implement, the files to create/modify are:
 
 | File | Purpose |
 |---|---|
-| `package.json` | Add `@clerk/express` dependency |
+| `package.json` | Add `@clerk/express` dependency, set `"type": "module"` |
 | `server.js` | Load `dotenv`, add `clerkMiddleware()` before routes, add CORS, register webhook route |
 | `.env` | Add Clerk keys + MongoDB URL |
 | `models/User.js` | Mongoose schema for local user profile + role |
