@@ -6,9 +6,8 @@ import { createNewCourse, updateCourseDetails } from "../../services/courses/adm
  */
 export const addCourse = async (req, res) => {
   try {
-    // TEMP (remove when middleware is added): fallback to seeded test instructor
-    const clerkUserId = req.auth?.userId || 'test_instructor_clerk_123';
-    const course = await createNewCourse(req.body, clerkUserId);
+    // req.auth.userId contains the secure Clerk user ID string
+    const course = await createNewCourse(req.body, req.auth.userId);
 
     return res.status(201).json({
       success: true,
@@ -31,13 +30,11 @@ export const addCourse = async (req, res) => {
 export const editCourse = async (req, res) => {
   try {
     const userRole = req.auth.sessionClaims?.metadata?.role || 'student';
-    // TEMP (remove when middleware is added): fallback to seeded test instructor
-    const clerkUserId = req.auth?.userId || 'test_instructor_clerk_123';
     
     const updatedCourse = await updateCourseDetails(
       req.params.slug,
       req.body,
-      clerkUserId,
+      req.auth.userId,
       userRole
     );
 
