@@ -7,6 +7,7 @@ import { clerkMiddleware } from "@clerk/express";
 import connectDB from "./config/db.js";
 import webhookRoutes from "./routes/webhook.js";
 import authRoutes from "./routes/auth.js";
+import courseRoutes from "./routes/courses/course.routes.js";
 
 connectDB();
 
@@ -20,6 +21,9 @@ app.use(clerkMiddleware());
 
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/auth", authRoutes);
+
+//Course routes
+app.use("/api/courses", courseRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
