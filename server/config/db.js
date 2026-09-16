@@ -3,19 +3,40 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const connectDB = async () => {
-    // 1. Check what the app is actually reading
-    console.log("Checking MONGO_URI value:", process.env.MONGO_URI);
+mongoose.Promise = global.Promise;
+const connect = mongoose.connection;
+mongoose.set('strictQuery', true);
 
-    try {
-        // 2. Removed deprecated options (useNewUrlParser and useUnifiedTopology)
-        const conn = await mongoose.connect(process.env.MONGO_URI);
-        
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
-    } catch (error) {
-        console.error(`Error: ${error.message}`);
-        process.exit(1);
-    }
+const connectDB = async () => {
+   const url = process.env.MONGO_URL;
+   
+    connect.on('connected', async () => {
+        console.log('MongoDB Connection Established ✅');
+    });
+    
+    connect.on('reconnected', async () => {
+        console.log('MongoDB Connection Reestablished 🔄');
+    });
+    
+    connect.on('disconnected', () => {
+        console.log('MongoDB Connection Disconnected ❌');
+        console.log('Trying to reconnect to Mongo...');
+
+        setTimeout(() => {
+            mongoose.connect(url);
+        }, 3000);
+    });
+    
+    connect.on('close', () => {
+        console.log('Mongo Connection Closed');
+    });
+    
+    connect.on('error', (error) => {
+        console.log('Mongo Connection Error: ' + error);
+    });
+
+    // ✅ REMOVED DEPRECATED OPTIONS HERE AS WELL
+    await mongoose.connect(url).catch((error) => console.log(error));
 };
 
 export default connectDB;

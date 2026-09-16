@@ -20,6 +20,6 @@ const categorySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Indexing slug for lightning-fast frontend searches
-categorySchema.index({ slug: 1 });
+//categorySchema.index({ slug: 1 });
 
 export default mongoose.model('Category', categorySchema);

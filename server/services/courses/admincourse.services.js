@@ -1,5 +1,7 @@
 import Course from '../../models/courses/Course.model.js';
 import User from '../../models/user.model.js';
+import { createNotFoundError, createBadRequestError, createForbiddenError } from '../../utils/appError.js';
+
 
 import slugify from 'slugify'; // Dynamic URL generator package
 
@@ -10,7 +12,7 @@ export const createNewCourse = async (courseData, clerkUserId) => {
   // 1. Find the local MongoDB User ID using the Clerk User ID string
   const instructorUser = await User.findOne({ clerkId: clerkUserId });
   if (!instructorUser) {
-    throw new Error('Instructor profile not found in ERP system');
+    throw createNotFoundError('Instructor profile not found in ERP system');
   }
 
   // 2. Automated slug generator (turns "AI Basics 101" into "ai-basics-101")
@@ -19,7 +21,7 @@ export const createNewCourse = async (courseData, clerkUserId) => {
   // 3. Check for slug collision
   const existingCourse = await Course.findOne({ slug: generatedSlug });
   if (existingCourse) {
-    throw new Error('A course with this title or slug already exists');
+    throw createBadRequestError('A course with this title or slug already exists');
   }
 
   // 4. Save into Database
@@ -39,14 +41,14 @@ export const updateCourseDetails = async (courseSlug, updateData, clerkUserId, u
   // 1. Fetch the course target by slug
   const course = await Course.findOne({ slug: courseSlug });
   if (!course) {
-    throw new Error('Course target not found');
+    throw createNotFoundError('Course target not found');
   }
 
   // 2. Security Check: Teachers can only edit THEIR own courses. Admins can edit anything.
   if (userRole !== 'admin') {
     const instructorUser = await User.findOne({ clerkId: clerkUserId });
     if (!course.instructor.equals(instructorUser?._id)) {
-      throw new Error('Unauthorised: You can only modify courses assigned to you');
+      throw createForbiddenError('Unauthorised: You can only modify courses assigned to you');
     }
   }
 
